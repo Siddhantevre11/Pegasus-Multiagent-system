@@ -1,0 +1,45 @@
+name: "llm_model"
+backend: "tensorrt_llm"
+
+# Maximum batch size the server will attempt to form.  For a 24 GB RTX 4090
+# the model and KV cache fit comfortably with batches up to 16 when using FP8
+# quantization.  Larger batches risk exhausting GPU memory.
+max_batch_size: 16
+
+# Configure which devices run this model.  Here we allocate one GPU.  On a
+# multi‑GPU system you can specify multiple IDs or increase `count` to
+# replicate the model across GPUs.
+instance_group {
+  kind: KIND_GPU
+  count: 1
+  gpus: [0]
+}
+
+# Enable dynamic batching.  The server will accumulate requests up to the
+# preferred_batch_size list.  If the queue delay exceeds the maximum,
+# requests will be dispatched with whatever batch has been built.
+dynamic_batching {
+  # Preferred batch sizes tuned for a single RTX 4090: small batches keep
+  # time‑to‑first‑token low while still improving throughput when multiple
+  # requests arrive concurrently.
+  preferred_batch_size: [4, 8, 16]
+  # Delay incoming requests up to 2 ms to form a larger batch.  This
+  # value balances TTFT and throughput in our benchmarks.
+  max_queue_delay_microseconds: 2000
+}
+
+# Example parameter pointing to the TensorRT‑LLM engine directory.  When
+# building with TensorRT‑LLM, this directory contains the serialized engine
+# files and tokenizer JSON.  Adjust the path to match your repository.
+parameters {
+  key: "engine_dir"
+  value: { string_value: "./engine" }
+}
+
+# Reserve a fraction of free GPU memory for other processes and the operating
+# system.  Setting this to 0.80 ensures that 20 % of VRAM is left unused,
+# preventing OOM errors when many sessions allocate KV caches.
+parameters {
+  key: "kv_cache_free_gpu_mem_fraction"
+  value: { string_value: "0.80" }
+}

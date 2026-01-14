@@ -1,0 +1,58 @@
+version: "3.9"
+services:
+  triton:
+    image: nvcr.io/nvidia/tritonserver:24.01-py3
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    shm_size: 4g
+    volumes:
+      - ./triton_model_repository:/models
+    command: >
+      tritonserver \
+        --model-repository=/models \
+        --log-verbose=0 \
+        --strict-model-config=false \
+        --model-control-mode=explicit
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  langgraph-api:
+    build: .
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0
+      - PYTHONPATH=/app
+      - TRITON_SERVER_URL=http://triton:8000
+      - VECTORDB_HOST=vectordb
+      - VECTORDB_PORT=6379
+    depends_on:
+      - triton
+      - vectordb
+    shm_size: 2g
+    ports:
+      - "8001:8001"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  vectordb:
+    image: redis:7.2
+    command: redis-server --save "" --appendonly no
+    ports:
+      - "6379:6379"
+    volumes:
+      - vectordb-data:/data
+
+volumes:
+  vectordb-data:
