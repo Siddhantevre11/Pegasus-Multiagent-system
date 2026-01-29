@@ -1,4 +1,4 @@
-# Multi-Agent Code Assistant (RTX 4090 – Reference Architecture)
+# Multi-Agent System (RTX 4090 – Reference Architecture)
 
 This repository presents a **reference architecture** for a **multi-agent LLM inference system** designed to run on a **single RTX 4090 (24GB, Ada Lovelace)** GPU.
 
